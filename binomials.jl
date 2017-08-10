@@ -7,7 +7,6 @@
 #markov4ti2(L::fmpz_mat)
 #idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
 
-
 function isCellular(I::Singular.sideal)
 	#output: the decision true/false whether I is cellular or not, I binomial ideal 
 	#if it is cellular, return true, cellular variables
@@ -50,10 +49,8 @@ function isCellular(I::Singular.sideal)
 			push!(Delta,i)
 		end
 	end
-	#println(Delta)
 	
 	#compute product of ring variables in Delta
-	#das ändern damit es nicht so komisch gemacht ist! (erstelle polynomom 1)
 	prodRingVar=one(I.base_ring)
 	for k in Delta
 		prodRingVar=prodRingVar*Variables[k]
