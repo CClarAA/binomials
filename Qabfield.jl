@@ -1,3 +1,10 @@
+###############################################################################
+#
+#   Implementation of QabField
+#   Functions so that we can use Qab as coefficient field
+#
+###############################################################################
+
 type QabField <: Nemo.Field # union of cyclotomic fields
 end
 
@@ -62,6 +69,7 @@ function root_of_unity(K::QabField, n::Int)
 end
 
 import Base.+, Base.*, Base.-, Base.//, Base.==, Base.zero, Base.one, Base.^
+import Nemo.mul!, Nemo.addeq!, Nemo.divexact, Nemo.iszero
 
 function ^(a::QabElem, n::Integer)
   return QabElem(a.data^n, a.c)
@@ -76,10 +84,20 @@ function +(a::QabElem, b::QabElem)
   return QabElem(a.data+b.data, a.c)
 end
 
+function addeq!(c::QabElem, a::QabElem)
+	c, a=make_compatible(c, a)
+	addeq!(c.data, a.data)
+	return c
+end
+
 function -(a::QabElem)
   return QabElem(-a.data,a.c)
 end
 
+function neg!(a::QabElem)
+	mul!(a.data,a.data,-1)
+	return a
+end
 
 function *(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
@@ -88,6 +106,14 @@ end
 
 *(a::Integer, b::QabElem) = QabElem(b.data*a, b.c)
 *(a::fmpz, b::QabElem) = QabElem(b.data*a, b.c)
+
+function mul!(c::QabElem, a::QabElem, b::QabElem)
+	a, b = make_compatible(a, b)
+	b, c = make_compatible(b, c)
+  a, b = make_compatible(a, b)
+	mul!(c.data, a.data, b.data)
+	return c
+end
 
 function -(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
@@ -99,10 +125,39 @@ function //(a::QabElem, b::QabElem)
   return QabElem(a.data//b.data, a.c)
 end  
 
+# // with other name
+function div(a::QabElem, b::QabElem)
+  a, b = make_compatible(a, b)
+  return QabElem(a.data//b.data, a.c)
+end  
+
+function divexact(a::QabElem, b::QabElem)
+	a, b = make_compatible(a, b)
+  return QabElem(divexact(a.data,b.data), a.c)
+end
+
+function inv(a::QabElem)
+	return(Base.one(Base.parent(a))//a)
+end
+
+function isone(a::QabElem)
+	return(isone(a.data))
+end
+
+function iszero(a::QabElem)
+	return(iszero(a.data))
+end
+
 function ==(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
   return a.data==b.data
 end  
+
+function ==(a::QabElem, b::Integer)
+	c = Base.parent(a)(b)
+	a, c = make_compatible(a,c)
+	return a==c
+end
 
 function (b::QabField)(a::Integer)
   return a*root_of_unity(b, 1)
@@ -112,9 +167,22 @@ function Base.copy(a::QabElem)
   return QabElem(a.data, a.c)
 end
 
+# deepcopy is the same as copy
+function deepcopy(a::QabElem, b::QabElem)
+  a, b = make_compatible(a, b)
+  return QabElem(a.data//b.data, a.c)
+end  
+
 Base.parent(::QabElem) = QabField()
 Base.one(::QabField) = QabField()(1)
 Base.one(::QabElem) = QabField()(1)
+
+
+###############################################################################
+#
+#   Partial character functions
+#
+###############################################################################
 
 type PChar
 	#A has generators of the lattice in rows
