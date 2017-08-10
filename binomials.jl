@@ -191,16 +191,18 @@ function markov4ti2(L::fmpz_mat)
 	
 	#now we have to get the matrix from julia4ti2.mat in julia
 	#this is an array of thype Any
-	helpArray=readdlm("julia4ti2.mar",Int64)
+	#helpArray=readdlm("julia4ti2.mar",Int64)
+	helpArray=readdlm("julia4ti2.mar")
 	sizeHelpArray=size(helpArray)
 	
 	#the size of the markov basis matrix is
 	nColMarkov=helpArray[1,2]
 	nRowMarkov=helpArray[1,1]
+	println(nRowMarkov)
 	
 	#now we have convert the lower part of the array helpArray into an Array of type Int64
 	helpArrayInt=Array(Int64,nRowMarkov,nColMarkov)
-
+	
 	for i=2:(nRowMarkov+1)
 		for j=1:nColMarkov
 		helpArrayInt[i-1,j]=helpArray[i,j]
@@ -217,8 +219,8 @@ function markov4ti2(L::fmpz_mat)
 	return helpArrayInt
 end
 
-
-function idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
+# mit #= beginnt multiline comment 
+#= function idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
 	@assert cols(P.A)==Singular.ngens(R)
 
 	#test if the domain of the partial character is the zero lattice
@@ -285,4 +287,4 @@ function idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
 		
 	return 1
 
-end
+end =#
