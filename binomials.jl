@@ -37,7 +37,6 @@ function isCellular(I::Singular.sideal)
 #		helpideal=SingularIdeal(I.base_ring,Variables[i])
 #		satu=saturate(I,helpideal)
 #		if (std(satu[1])[1])==1
-#			#println("j")
 #			push!(DeltaC,i)
 #		end
 #	end
