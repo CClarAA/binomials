@@ -28,10 +28,10 @@ function is_conductor(n::Int)
   return n % 4 == 0
 end
 
-function cyclotomic_field(n::Int)
-  Zx, x = FlintZZ["x"]
-  return number_field(cyclotomic(n, x), "z_$n")
-end
+#function cyclotomic_field(n::Int)
+#  Zx, x = FlintZZ["x"]
+#  return number_field(cyclotomic(n, x), "z_$n")
+#end
 
 function coerce_up(K::AnticNumberField, n::Int, a::QabElem)
   d = div(n, a.c)
@@ -126,27 +126,29 @@ function //(a::QabElem, b::QabElem)
 end  
 
 # // with other name
-function div(a::QabElem, b::QabElem)
+function Base.div(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
   return QabElem(a.data//b.data, a.c)
 end  
 
-function divexact(a::QabElem, b::QabElem)
+function Hecke.divexact(a::QabElem, b::QabElem)
 	a, b = make_compatible(a, b)
   return QabElem(divexact(a.data,b.data), a.c)
 end
 
-function inv(a::QabElem)
+function Base.inv(a::QabElem)
 	return(Base.one(Base.parent(a))//a)
 end
 
-function isone(a::QabElem)
+function Hecke.isone(a::QabElem)
 	return(isone(a.data))
 end
 
-function iszero(a::QabElem)
+function Base.iszero(a::QabElem)
 	return(iszero(a.data))
 end
+
+import Base.==
 
 function ==(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
@@ -168,7 +170,7 @@ function Base.copy(a::QabElem)
 end
 
 # deepcopy is the same as copy
-function deepcopy(a::QabElem, b::QabElem)
+function Base.deepcopy(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
   return QabElem(a.data//b.data, a.c)
 end  
@@ -177,6 +179,8 @@ Base.parent(::QabElem) = QabField()
 Base.one(::QabField) = QabField()(1)
 Base.one(::QabElem) = QabField()(1)
 
+Hecke.needs_parentheses(::QabElem) = true
+Hecke.isnegative(::QabElem) = false
 
 ###############################################################################
 #
