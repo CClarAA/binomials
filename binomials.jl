@@ -106,7 +106,59 @@ function saturate(I::Singular.sideal, J::Singular.sideal)
 end
 
 
-function cellularDecomp(I::Singular.sideal)
+function cellularDecomp(I::Singular.sideal) #with less redundancies
+	#input: binomial ideal I
+	#output: a cellular decomposition of I
+
+	if (isBinomialIdeal(I)==false)
+		error("Input ideal is not binomial")
+	end
+
+	A=isCellular(I)
+	if A[1]==true
+		return [std(I)]
+	end
+	
+	#choose a variable which is a zero divisor but not nilptent modulo I -> A[2] (if not dummer fall)
+	#determine the power s s.t. (I:x_i^s)==(I:x_i^infty)
+	satu=saturate(I,SingularIdeal(I.base_ring,Singular.gens(I.base_ring)[A[2]]))
+	s=satu[2]
+
+	#now compute the cellular decomposition of the binomial ideals (I:x_i^s) and I+(x_i^s)
+	#by recursively calling the algorithm
+	Decomp=Singular.sideal[]
+	I1=satu[1]
+	I2=I+SingularIdeal(I.base_ring,(Singular.gens(I.base_ring)[A[2]])^s)
+	
+	DecompI1=cellularDecomp(I1)
+	DecompI2=cellularDecomp(I2)
+	
+	#now check for redundancies
+	redTest=SingularIdeal(I.base_ring,one(I.base_ring))
+	redTestIntersect=SingularIdeal(I.base_ring,one(I.base_ring))
+	
+	for i=1:size(DecompI1,1)
+		redTestIntersect=Singular.intersection(redTest,DecompI1[i])
+		if Singular.ngens(std(reduce(redTest,std(redTestIntersect))))!=0
+			#ideal not redundant
+			Decomp=[Decomp;DecompI1[i]]
+		end
+		redTest=redTestIntersect
+	end
+	for i=1:size(DecompI2,1)
+		redTestIntersect=Singular.intersection(redTest,DecompI2[i])
+		if Singular.ngens(std(reduce(redTest,std(redTestIntersect))))!=0
+			#ideal not redundant
+			Decomp=[Decomp;DecompI2[i]]
+		end
+		redTest=redTestIntersect
+	end
+		
+	return Decomp
+end 
+
+
+function cellularDecomp2(I::Singular.sideal) #with redundancies
 	#input: binomial ideal I
 	#output: a cellular decomposition of I
 
