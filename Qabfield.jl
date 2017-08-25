@@ -182,6 +182,10 @@ Base.one(::QabElem) = QabField()(1)
 Hecke.needs_parentheses(::QabElem) = true
 Hecke.isnegative(::QabElem) = false
 
+#evtl später noch einfügen promote_rule aber bisher noch nicht notwendig
+#Hecke.promote_rule(::Type{QabElem}, ::Type{T}) where {T <: Integer} = QabElem
+
+
 ###############################################################################
 #
 #   Partial character functions
