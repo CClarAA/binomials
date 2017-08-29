@@ -185,6 +185,17 @@ Hecke.isnegative(::QabElem) = false
 #evtl später noch einfügen promote_rule aber bisher noch nicht notwendig
 #Hecke.promote_rule(::Type{QabElem}, ::Type{T}) where {T <: Integer} = QabElem
 
+#folgende sachen eigentlich besser wieder rausnehmen
+Hecke.promote_rule(::Type{QabElem}, ::Type{T}) where {T <: Integer} = QabElem
+
+Hecke.promote_rule(::Type{QabElem}, ::Type{fmpz}) = QabElem
+
+Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq}) = QabElem
+
+Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq_poly}) = QabElem
+
+
+
 
 ###############################################################################
 #
