@@ -6,6 +6,8 @@
 #isBinomialIdeal(I::Singular.sideal)
 #markov4ti2(L::fmpz_mat)
 #idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
+#partialCharacterFromIdeal(I::Singular.sideal, R::Singular.SingularPolyRing)
+#cellularStandardMonomials(I::Singular.sideal)
 
 function isCellular(I::Singular.sideal)
 	#output: the decision true/false whether I is cellular or not, I binomial ideal 
@@ -339,7 +341,7 @@ function idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
 		var=var*Variables[i]
 	end	
 	#achtung hier noch eingeben welchen teil man zurückgeben möchte, d.h. ob [1] oder [2]
-	return saturate(I,SingularIdeal(R,varProduct))
+	return saturate(I,SingularIdeal(R,varProduct))[1]
 
 end 
 
@@ -379,7 +381,7 @@ function makeBinomials(P::PChar, R::Singular.SingularPolyRing)
 end
 
 
-#= function partialCharacterFromIdeal(I::Singular.sideal, R::SingularSingularPolyRing)
+function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.SingularPolyRing)
 	#input: cellular binomial ideal
 	#output: the partial character corresponding to the ideal I \cap k[\mathbb{N}^\Delta]
 	
@@ -415,7 +417,7 @@ end
 	if Singular.ngens(J)==0 || (Singular.ngens(J)==1 && J[1]== R(0))	
 		#return another trivial character
 		#lattice has only one generator, namely the zero vector
-		P=PChar(matrix(FlintZZ,1,Singular.ngens(R), zeros(Int64,1,Singular.ngens(R))), [Qab(1)], Set{Int64}([Delta]))
+		P=PChar(matrix(FlintZZ,1,Singular.ngens(R), zeros(Int64,1,Singular.ngens(R))), [Qab(1)], Set{Int64}(Delta))
 		return P
 	end
 	
@@ -426,12 +428,69 @@ end
 	for i=1:Singular.ngens(J)
 		ts=[ts; J[i]]
 	end
+
+	#hier noch das ganze mit den erzeugern richtig machen
+
+	return ts
 	
 	
-	
-end =#
+end 
 
 
+function cellularStandardMonomials(I::Singular.sideal)
+	#assume I is cellular
+	#return the Standardmonomials of the ideal I \cap k[\mathbb{N}^\Delta], 
+	#this are only finitely many!
+
+	if I.isGB==false
+		I=std(I)
+	end
+	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	R=Singular.base_ring(I)
+
+	#now we start computing the standardmonomials
+	#first determine the set Delta^c of noncellular variables
+	DeltaC=Array{Int64}[]
+	for i=1: Singular.ngens(R)
+		if (i in cell[2])==false
+			DeltaC=[DeltaC;i]
+		end
+	end
+	
+	#eliminate the variables in Delta
+	prodDelta=R(1)
+	Variables=Singular.gens(R)
+	for i in cell[2]
+		prodDelta=prodDelta*Variables[i]
+	end
+	println(prodDelta)
+	J=Singular.eliminate(I, prodDelta)
+	println(J)
+
+	leadIdeal=lead(J)
+	leadIdeal=std(leadIdeal)
+	mon=Array{Singular.spoly}[]	#this will hold set of standard monomials	
+	
+	for i in DeltaC
+		flag=true
+		d=1
+		while flag ==true
+			if reduce(Variables[i]^d,I) == 0
+				flag=false
+			else
+				mon=[mon;Variables[i]^d]
+				d=d+1
+			end
+		end
+	end 
+			
+	return mon
+end
 
 
 
