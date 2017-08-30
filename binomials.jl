@@ -8,6 +8,7 @@
 #idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
 #partialCharacterFromIdeal(I::Singular.sideal, R::Singular.SingularPolyRing)
 #cellularStandardMonomials(I::Singular.sideal)
+#witnessMonomials(I::Singular.sideal)
 
 function isCellular(I::Singular.sideal)
 	#output: the decision true/false whether I is cellular or not, I binomial ideal 
@@ -468,9 +469,8 @@ function cellularStandardMonomials(I::Singular.sideal)
 	for i in cell[2]
 		prodDelta=prodDelta*Variables[i]
 	end
-	println(prodDelta)
+	
 	J=Singular.eliminate(I, prodDelta)
-	println(J)
 
 	leadIdeal=lead(J)
 	leadIdeal=std(leadIdeal)
@@ -488,9 +488,58 @@ function cellularStandardMonomials(I::Singular.sideal)
 			end
 		end
 	end 
-			
-	return mon
+	
+	#next step is not implemented effectively but it works (Verbessern irgendwann)
+	moncopy=mon
+	
+	for i in subsets(mon)
+		testmon=R(1)
+		for l in i 
+			testmon=testmon*l
+		end
+		
+		if reduce(testmon,I) != 0 && (testmon in moncopy)==false && testmon != R(1)
+			moncopy=[moncopy;testmon]
+		end
+	end
+					
+	return moncopy
 end
+
+
+function witnessMonomials(I::Singular.sideal)
+	#input: cellular binomial ideal
+	#output M_{emb}(I)
+	#test if input ideal is cellular
+	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	R=Singular.base_ring(I)
+	Delta=cell[2]
+	
+	#compute the pChar corresponding to I and the standard monomials of I \cap k[N^Delta]
+	P=partialCharacterFromIdeal(I, R)
+	M=cellularStandardMonomials(I)	#array of standard monomials, this is our to-do list
+	Memb=Array{Singular.spoly}[]	#this will hold our set of witness monomials
+	
+	while size(M,1)!=0
+		Iquotm=Singular.quotient(I,SingularIdeal(R,M[1]))
+		println(Iquotm)
+		Pquotm=partialCharacterFromIdeal(Iquotm, R)
+		println(Pquotm)
+		if rank(Pquotm.A)>rank(P.A)
+			Memb=[Memb;M[1]]
+		end
+		deleteat!(M,1)
+	end
+	
+	return(Memb)
+end		
+	
+	
 
 
 
