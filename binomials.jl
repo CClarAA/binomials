@@ -9,6 +9,127 @@
 #partialCharacterFromIdeal(I::Singular.sideal, R::Singular.SingularPolyRing)
 #cellularStandardMonomials(I::Singular.sideal)
 #witnessMonomials(I::Singular.sideal)
+#cellularPrimaryDecomposition(I::Singular.sideal)
+#cellularMinimalAssociatedPrimes(I::Singular.sideal)
+#cellularAssociatedPrimes(I::Singular.sideal)
+#cellularHull(I::Singular.sideal)
+
+
+###################################################################################
+#
+#	Hilfsfunktionen
+#
+###################################################################################
+
+function saturate(I::Singular.sideal, J::Singular.sideal)
+	flag=true
+	if I.base_ring!=J.base_ring
+		return("Error: I and J not defined over the same ring")
+	end
+ 	If=I
+	k=0
+	Iff=I
+	while flag
+		Iff=quotient(If,J)
+		if Iff[1]==1 
+			return([Iff,k+1])
+		end
+		if Singular.ngens(std(reduce(Iff,std(If))))==0
+			return([Iff,k])
+		end
+		if std(reduce(Iff,std(If)))[1]==0
+			return([Iff,k])
+		end
+		If=Iff
+		k=k+1
+	end	
+end
+
+function isBinomial(f::Singular.spoly)
+	if Singular.length(f)<=2
+		return(true)
+	else 
+		return(false)
+	end
+end
+
+
+function isBinomialIdeal(I::Singular.sideal)
+	if I.isGB==false	
+		I=std(I)
+	end
+
+	for i=1:Singular.ngens(I)
+		if isBinomial(I[i])==false
+			return(false)
+		end
+	end
+	return(true)
+end 
+
+
+function markov4ti2(L::fmpz_mat)
+	#sanity checks noch einbauen!!
+	nc=cols(L)
+	nr=rows(L)
+	#have to prepare an input file for 4ti2
+	#create the file julia4ti2.lat
+	#f=open("julia4ti2.mat","r")
+	f=open("julia4ti2.lat","w")
+	write(f,"$nr ")
+	write(f,"$nc \n")
+
+	for i=1:nr
+		for j=1:nc
+			write(f,"$(L[i,j]) ")
+		end
+		write(f,"\n")
+	end		
+	close(f)
+	
+	#now we have the file julia4ti2.lat in the current working directory
+	#can run 4ti2 with this input file to get a markov basis
+	run(`/usr/bin/markov julia4ti2`)
+	#this creates the file julia4ti2.mar with the markov basis
+	
+	#numbers = readdlm("julia4ti2.mat")
+	
+	#now we have to get the matrix from julia4ti2.mat in julia
+	#this is an array of thype Any
+	#helpArray=readdlm("julia4ti2.mar",Int64)
+	helpArray=readdlm("julia4ti2.mar")
+	sizeHelpArray=size(helpArray)
+	
+	#the size of the markov basis matrix is
+	nColMarkov=Int(helpArray[1,2])
+	nRowMarkov=Int(helpArray[1,1])
+	#println(nRowMarkov)
+	
+	#now we have convert the lower part of the array helpArray into an Array of type Int64
+	helpArrayInt=Array(Int64,nRowMarkov,nColMarkov)
+	
+	for i=2:(nRowMarkov+1)
+		for j=1:nColMarkov
+		helpArrayInt[i-1,j]=helpArray[i,j]
+		end
+	end
+	
+	#remove constructed files 
+	run(`rm julia4ti2.lat`)
+	run(`rm julia4ti2.mar`)	
+	
+	#now we have to convert this integer array into a FlintZZ matrix
+	#braucht man das wirklich oder unnötig?? evtl Int64 besser...
+	#Markov=Matrix(FlintZZ,nRowMarkov,nColMarkov,helpArrayInt)
+	return helpArrayInt
+end
+
+
+###################################################################################
+#
+#	Cellular-zeug
+#
+###################################################################################
 
 function isCellular(I::Singular.sideal)
 	#output: the decision true/false whether I is cellular or not, I binomial ideal 
@@ -35,14 +156,6 @@ function isCellular(I::Singular.sideal)
 	Variables=Singular.gens(I.base_ring)
 	#satu=SingularIdeal(I.base_ring)
 	helpideal=SingularIdeal(I.base_ring)
-	
-#	for i=1:Singular.ngens(I.base_ring)
-#		helpideal=SingularIdeal(I.base_ring,Variables[i])
-#		satu=saturate(I,helpideal)
-#		if (std(satu[1])[1])==1
-#			push!(DeltaC,i)
-#		end
-#	end
 	
 	for i=1:Singular.ngens(I.base_ring)
 		helpideal=SingularIdeal(I.base_ring,Variables[i])
@@ -81,31 +194,6 @@ function isCellular(I::Singular.sideal)
 		end		
 
 	end
-end
-
-
-function saturate(I::Singular.sideal, J::Singular.sideal)
-	flag=true
-	if I.base_ring!=J.base_ring
-		return("Error: I and J not defined over the same ring")
-	end
- 	If=I
-	k=0
-	Iff=I
-	while flag
-		Iff=quotient(If,J)
-		if Iff[1]==1 
-			return([Iff,k+1])
-		end
-		if Singular.ngens(std(reduce(Iff,std(If))))==0
-			return([Iff,k])
-		end
-		if std(reduce(Iff,std(If)))[1]==0
-			return([Iff,k])
-		end
-		If=Iff
-		k=k+1
-	end	
 end
 
 
@@ -194,84 +282,12 @@ function cellularDecomp2(I::Singular.sideal) #with redundancies
 end 
 
 
-function isBinomial(f::Singular.spoly)
-	if Singular.length(f)<=2
-		return(true)
-	else 
-		return(false)
-	end
-end
+###################################################################################
+#
+#	partial characters und ideals
+#
+###################################################################################
 
-
-function isBinomialIdeal(I::Singular.sideal)
-	if I.isGB==false	
-		I=std(I)
-	end
-
-	for i=1:Singular.ngens(I)
-		if isBinomial(I[i])==false
-			return(false)
-		end
-	end
-	return(true)
-end 
-
-
-function markov4ti2(L::fmpz_mat)
-	#sanity checks noch einbauen!!
-	nc=cols(L)
-	nr=rows(L)
-	#have to prepare an input file for 4ti2
-	#create the file julia4ti2.lat
-	#f=open("julia4ti2.mat","r")
-	f=open("julia4ti2.lat","w")
-	write(f,"$nr ")
-	write(f,"$nc \n")
-
-	for i=1:nr
-		for j=1:nc
-			write(f,"$(L[i,j]) ")
-		end
-		write(f,"\n")
-	end		
-	close(f)
-	
-	#now we have the file julia4ti2.lat in the current working directory
-	#can run 4ti2 with this input file to get a markov basis
-	run(`/usr/bin/markov julia4ti2`)
-	#this creates the file julia4ti2.mar with the markov basis
-	
-	#numbers = readdlm("julia4ti2.mat")
-	
-	#now we have to get the matrix from julia4ti2.mat in julia
-	#this is an array of thype Any
-	#helpArray=readdlm("julia4ti2.mar",Int64)
-	helpArray=readdlm("julia4ti2.mar")
-	sizeHelpArray=size(helpArray)
-	
-	#the size of the markov basis matrix is
-	nColMarkov=Int(helpArray[1,2])
-	nRowMarkov=Int(helpArray[1,1])
-	#println(nRowMarkov)
-	
-	#now we have convert the lower part of the array helpArray into an Array of type Int64
-	helpArrayInt=Array(Int64,nRowMarkov,nColMarkov)
-	
-	for i=2:(nRowMarkov+1)
-		for j=1:nColMarkov
-		helpArrayInt[i-1,j]=helpArray[i,j]
-		end
-	end
-	
-	#remove constructed files 
-	run(`rm julia4ti2.lat`)
-	run(`rm julia4ti2.mar`)	
-	
-	#now we have to convert this integer array into a FlintZZ matrix
-	#braucht man das wirklich oder unnötig?? evtl Int64 besser...
-	#Markov=Matrix(FlintZZ,nRowMarkov,nColMarkov,helpArrayInt)
-	return helpArrayInt
-end
 
 # mit #= beginnt multiline comment 
 function idealFromCharacter(P::PChar, R::Singular.SingularPolyRing)
@@ -431,11 +447,19 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.SingularPolyR
 	end
 
 	#hier noch das ganze mit den erzeugern richtig machen
+	#um zu testen ob ein vektor in einem gitter enthalten ist verwende
+	#cansolve(B,testVector)[1]==false
 
 	return ts
 	
 	
 end 
+
+###################################################################################
+#
+#	embedded associated lattice witnesses and hull
+#
+###################################################################################
 
 
 function cellularStandardMonomials(I::Singular.sideal)
@@ -509,7 +533,7 @@ end
 
 function witnessMonomials(I::Singular.sideal)
 	#input: cellular binomial ideal
-	#output M_{emb}(I)
+	#output M_{emb}(I) (not the ideal, but the generators of it in an array)
 	#test if input ideal is cellular
 	
 	cell=isCellular(I)
@@ -539,7 +563,168 @@ function witnessMonomials(I::Singular.sideal)
 	return(Memb)
 end		
 	
+
+function cellularHull(I::Singular.sideal)
+	#input: cellular binomial ideal 
+	#ouput: hull(I), the intersection of all minimal primary components of I
+
+	#by theorems we know that Hull(I)=M_emb(I)+I
 	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+	
+	#now construct the ideal M_emb with the abouve algorithm witnessMonomials
+	Memb=SingularIdeal(I.base_ring,R(0))	#this will hold the ideal M_emb(I)
+	M=witnessMonomials(I)
+	
+	for m in M
+		Memb=Memb + SingularIdeal(R,m)
+	end
+	
+	return (I+Memb)	
+end
+
+
+
+###################################################################################
+#
+#	associated primes
+#
+###################################################################################	
+
+function cellularAssociatedPrimes(I::Singular.sideal)
+	#input: cellular binomial ideal
+	#output: the set of associated primes of I
+	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	if I.isGB==false
+		I=std(I)
+	end
+	
+	Ass=Array{Singular.sideal}[]	#this will hold the set of associated primes of I
+	Variables=Singular.gens(I.base_ring)
+	U=cellularStandardMonomials(I)	#set of standard monomials
+
+	#construct the ideal (x_i \mid i \in \Delta^c)
+	idealDeltaC=SingularIdeal(R,R(0))
+	for i=1:Singular.ngens(I.base_ring)
+		if (i in cell[2])==false
+			idealDeltaC=idealDeltaC + SingularIdeal(I.base_ring,Variables[i])
+		end
+	end		
+	
+	for m in U
+		Im=Singular.quotient(I,SingularIdeal(I.base_ring,m))
+		Pm=partialCharacterFromIdeal(Im,I.base_ring)
+		
+		#now compute all saturations of the partial character Pm
+		PmSat=PCharSaturateAll(Pm)					
+
+		for P in PmSat
+			Ass=[Ass; (idealFromCharacter(P, I.base_ring)+idealDeltaC)]
+		end
+	end
+
+	return Ass
+end
+
+
+function cellularMinimalAssociatedPrimes(I::Singular.sideal)
+	#input: cellular binomial ideal
+	#output: the set of minimal associated primes of I
+	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	P=partialCharacterFromIdeal(I,I.base_ring)
+	PSat=PCharSaturateAll(P)
+	
+	minAss=Array{Singular.sideal}[]	#this will hold the set of minimal associated primes
+	
+	#construct the ideal (x_i \mid i \in \Delta^c)
+	idealDeltaC=SingularIdeal(R,R(0))
+	for i=1:Singular.ngens(I.base_ring)
+		if (i in cell[2])==false
+			idealDeltaC=idealDeltaC + SingularIdeal(I.base_ring,Variables[i])
+		end
+	end	
+
+	for Q in PSat
+		minAss=[minAss; (idealFromCharacter(Q,I.base_ring)+idealDeltaC)]
+	end
+		
+	return minAss
+end
+
+
+###################################################################################
+#
+#	primary decomposition
+#
+###################################################################################
+
+
+function cellularPrimaryDecomposition(I::Singular.sideal)    #algorithm from macaulay2
+	#input: cellular binomial ideal in k[x] where k algebraically closed of characterstic 0
+	#output: binomial primary ideals which form a minimal primary decomposition of I
+
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	#compute associated primes
+	Ass=cellularAssociatedPrimes(I)
+	C=Array{Singular.sideal}[]	#this will hold the set of primary components
+	
+	#compute product of all non cellular variables and the product of all cell variables
+	prodDeltaC=R(1)	
+	prodDelta=R(1)
+	Variables=Singular.gens(I.base_ring)
+	for i=1:Singular.ngens(R)
+		if (i in cell[2])==false
+			prodDeltaC=prodDeltaC*Variables[i]
+		else 
+			prodDelta=prodDelta*Variables[i]
+		end
+	end
+	
+	for P in Ass
+		helpIdeal=I+eliminate(P,prodDeltaC)
+		#now saturate the ideal with respect to the cellular variables
+		helpIdeal=saturate(I,SingularIdeal(I.base_ring,prodDelta))
+		C=[C; cellularHull(helpIdeal)]
+	end
+	return C
+end
+
+function binomialPrimaryDecomposition(I::Singular.sideal)
+	#input: binomial ideal 
+	#output: binomial primary ideals which form a not necessarily 
+	#minimal primary decomposition of I
+
+	#first compute a cellular decomposition of I
+	cellComps=cellularDecomp(I)
+	
+	C=Array{Singular.sideal}[]	#this will hold the set of primary components
+	
+	#now compute a primary decomposition of each cellular component 
+	for J in cellComps
+		C=[C; cellularPrimaryDecomposition(J)]
+	end
+	
+	#remove redundancies -> todo
+
+	return C		
+end
 
 
 
