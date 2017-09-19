@@ -492,10 +492,6 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 		uv=matrixFromArray(u-v)	#this is the vector of u-v
 		vst=transpose(vs)
 		vstMat=matrix(FlintZZ,size(vst,1), size(vst,2),vst)
-		println(transpose(vstMat))
-		println("nun uv transp")
-		println(uv)
-		println("naechster")
 		
 		if(cansolve(transpose(vstMat),uv)[1]==false)	
 			images=[images; nemo(lead_coeff(tCopy))]
@@ -520,8 +516,6 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 
 	P=PChar(vsMat, images , Set{Int64}(Delta))
 	return P
-	
-	
 end 
 
 ###################################################################################
@@ -616,13 +610,12 @@ function witnessMonomials(I::Singular.sideal)
 	#compute the pChar corresponding to I and the standard monomials of I \cap k[N^Delta]
 	P=partialCharacterFromIdeal(I, R)
 	M=cellularStandardMonomials(I)	#array of standard monomials, this is our to-do list
-	Memb=Array{Singular.spoly}[]	#this will hold our set of witness monomials
+	Memb=Singular.spoly[]	#this will hold our set of witness monomials
 	
 	while size(M,1)!=0
 		Iquotm=Singular.quotient(I,Ideal(R,M[1]))
-		println(Iquotm)
 		Pquotm=partialCharacterFromIdeal(Iquotm, R)
-		println(Pquotm)
+		println(rank(Pquotm.A)>rank(P.A))
 		if rank(Pquotm.A)>rank(P.A)
 			Memb=[Memb;M[1]]
 		end
