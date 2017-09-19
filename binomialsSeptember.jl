@@ -152,6 +152,11 @@ function matrixFromArray(A::Array{Int64,1})
 	return(MatFlint)
 end
 
+function nemo(a::Singular.n_unknown{})
+	#returns the nemo value of a Singular.n_unknown element
+	return Singular.libSingular.julia(a.ptr)
+end
+
 ###################################################################################
 #
 #	Cellular-zeug
@@ -475,7 +480,7 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 	
 	#vs=matrix(FlintZZ,1,Singular.ngens(R),zeros(Int64,1,Singular.ngens(R)))
 	vs=zeros(Int64,Singular.ngens(R),1)
-	images=Array{QabElem,1}
+	images=QabElem[]
 	for t in ts
 		tCopy=t
 		u=lead_exponent(t)
@@ -493,7 +498,7 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 		println("naechster")
 		
 		if(cansolve(transpose(vstMat),uv)[1]==false)	
-			images=[images;Qab(lead_coeff(tCopy))]
+			images=[images; nemo(lead_coeff(tCopy))]
 			println(typeof(lead_coeff(tCopy)))
 			#we have to save u-v as generator for the lattice
 			#now concatenate the vector vs on on bottom of the matrix vs
