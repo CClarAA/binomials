@@ -239,13 +239,14 @@ end
 function LatticeEqual(A::fmpz_mat,B::fmpz_mat)
   #lattices are always given as basis vectors, so if they are equal they must have the same 
   #number of generators
-  @assert rows(A)==rows(B)  
+  #eher doch nicht als basis vectors gegeben (since partialCharacterFromIdeal does not return a basis)
+  #@assert rows(A)==rows(B)  
   @assert cols(A)==cols(B)
   A=A'
   B=B'
 
   #use solve to check if lattices are equal
-  testVector=Matrix(FlintZZ,rows(A),1,[0; 0; 0])
+  testVector=matrix(FlintZZ,rows(A),1,zeros(Int64,rows(A),1))
 
   #test if A contained in B
   for k=1:cols(A)
@@ -290,9 +291,7 @@ function PCharEqual(P::PChar,Q::PChar)
   if (P.b==Q.b)==false
 		return(false)
   end
-	if (P.D==Q.b)==false
-		return(false)
-	end
+
   return(true)
 end
 
@@ -310,6 +309,20 @@ function allroot(a::QabElem, n::Int)
   A=[mu]
   for k=1:(l-1)
     A=[A mu^(k+1)]
+  end
+  return A
+end
+
+function allroot2(a::QabElem, n::Int)
+	#versuch dass die funktion jetzt das richtigere tut aber etwas arg schlecht implementiert
+	o = order(a)
+  l = o*n
+  mu = root_of_unity(QabField(), Int(l))
+  A=[mu]
+  for k=1:(l-1)
+		if (mu^(k+1))^n==a
+    	A=[A mu^(k+1)]
+		end
   end
   return A
 end
@@ -390,6 +403,17 @@ end
 
 #achtung um das zu benutzen muss man using IterTools davor eingeben!
 function PCharSaturateAll(L::PChar)
+  Result=PChar[]
+
+  #first handle case wher the domain of the partial character is the zero lattice
+  #in this case return L
+  ZeroTest=matrix(FlintZZ,1,cols(L.A),zeros(Int64,1,cols(L.A)))
+  if LatticeEqual(L.A,ZeroTest)==true
+		push!(Result,L)
+		return Result
+  end	
+	
+  #now not trivial case
   H = hnf(L.A')
   s = sub(H, 1:cols(H), 1:cols(H))
   i, d = pseudo_inv(s)  #is = d I_n
@@ -397,7 +421,7 @@ function PCharSaturateAll(L::PChar)
   S = divexact(i'*L.A, d)
   Re = QabElem[]
  
-  B = Array[]
+	B = Array[]
   for k=1:rows(s)
     c = i[1,k]
     for j=2:cols(s)
@@ -407,7 +431,8 @@ function PCharSaturateAll(L::PChar)
       end
     end
     mu = evaluate(FacElem(Dict([(L.b[j], div(i[j, k], c)) for j=1:cols(s)])))
-    mu = allroot(mu, Int(div(d, c)))
+    #mu = allroot(mu, Int(div(d, c)))
+		mu=allroot2(mu, Int(div(d,c)))
     push!(B,  mu) 
   end
   
@@ -417,7 +442,6 @@ function PCharSaturateAll(L::PChar)
 		push!(T,collect(a))
   end
   
-  Result=PChar[]
   for k=1:size(T,1)
 			push!(Result,PChar(S, T[k],L.D))
 	end
