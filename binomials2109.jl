@@ -61,6 +61,7 @@ end
 
 
 function isBinomialIdeal(I::Singular.sideal)
+	#wichtig eigentlich brauche ich hier die reduzierte GB aber die gibt es im Moment noch nicht
 	if I.isGB==false	
 		I=std(I)
 	end
@@ -162,32 +163,21 @@ end
 import Base.==
 
 function ==(I::Singular.sideal,J::Singular.sideal)
-	if I.isGB==false
-		I=std(I)
-	end
-	if J.isGB==false
-		J=std(J)
-	end
-	if Singular.ngens(I)!=Singular.ngens(J)
+	if isSubset(I,J)==true && isSubset(J,I)==true
+		return true
+	else 
 		return false
 	end
-	for i=1:Singular.ngens(I)
-		if I[i]!=J[i]
-			return false
-		end
-	end
-	return true
 end
 
 function isSubset(I::Singular.sideal,J::Singular.sideal)
 	#returns true if I is contained in J
 	#else returns false
-	
-	idealTest=Singular.intersection(I,J)
-	if I.isGB==false
-		I=std(I)
+	if J.isGB==false
+		J=std(J)
 	end
-	if I==idealTest
+	testIdeal=std(reduce(I,J))
+	if Singular.ngens(testIdeal)==0 || testIdeal[1]==I.base_ring(0)
 		return true
 	end
 	return false	
@@ -348,12 +338,27 @@ function cellularDecomp(I::Singular.sideal) #with less redundancies
 	#determine the power s s.t. (I:x_i^s)==(I:x_i^infty)
 	satu=saturate(I,Ideal(I.base_ring,Singular.gens(I.base_ring)[A[2]]))
 	s=satu[2]
-
 	#now compute the cellular decomposition of the binomial ideals (I:x_i^s) and I+(x_i^s)
 	#by recursively calling the algorithm
 	Decomp=Singular.sideal[]
 	I1=satu[1]
 	I2=I+Ideal(I.base_ring,(Singular.gens(I.base_ring)[A[2]])^s)
+	if I==I1
+		error("I1 is equal I")
+	end
+	if I==I2
+		error("I2 is equal I")
+	end
+	if I1==Ideal(I.base_ring,I.base_ring(1))
+		println(I)
+		println((Singular.gens(I.base_ring)[A[2]])^s)
+		error("unit ideal appears for I1")
+	end
+	if I2==Ideal(I.base_ring,I.base_ring(1))
+		println(I)
+		println((Singular.gens(I.base_ring)[A[2]])^s)
+		error("unit ideal appears for I2")
+	end
 	
 	DecompI1=cellularDecomp(I1)
 	DecompI2=cellularDecomp(I2)
@@ -876,12 +881,17 @@ function cellularAssociatedPrimes(I::Singular.sideal)
 	end		
 	
 	for m in U
+		println(typeof(m))
+		println(m)
+		println(1)
 		Im=Singular.quotient(I,Ideal(I.base_ring,m))
-		Pm=partialCharacterFromIdeal(Im,I.base_ring)
-		
+		println(Im)
+		println(2)
+		Pm=partialCharacterFromIdeal(Im,Im.base_ring)
+		println(3)
 		#now compute all saturations of the partial character Pm
 		PmSat=PCharSaturateAll(Pm)					
-
+		println(4)
 		for P in PmSat
 			Ass=[Ass; (idealFromCharacter(P, I.base_ring)+idealDeltaC)]
 		end
@@ -920,7 +930,7 @@ function cellularAssociatedPrimesSet(I::Singular.sideal)
 	Ass=Set{Singular.sideal}([])	#this will hold the set of associated primes of I
 	Variables=Singular.gens(I.base_ring)
 	U=cellularStandardMonomials(I)	#set of standard monomials
-
+	
 	#construct the ideal (x_i \mid i \in \Delta^c)
 	idealDeltaC=Ideal(R,R(0))
 	for i=1:Singular.ngens(I.base_ring)
