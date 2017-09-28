@@ -4,10 +4,11 @@
 #cellularDecomp(I::Singular.sideal)
 #isBinomial(f::Singular.spoly)
 #isBinomialIdeal(I::Singular.sideal)
+#isUnital(I::Singular.sideal)
 #lead_coeff(f::Singular.spoly)
 #monomialFromVector(a::Array{Int64,1}, R::Singular.PolyRing)
 #markov4ti2(L::fmpz_mat)
-# "=="(I::Singular.sideal,J::Singular.sideal)
+#"=="(I::Singular.sideal,J::Singular.sideal)
 #isSubset(I::Singular.sideal,J::Singular.sideal)
 #idealFromCharacter(P::PChar, R::Singular.PolyRing)
 #partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
@@ -28,10 +29,14 @@
 ###################################################################################
 
 function saturate(I::Singular.sideal, J::Singular.sideal)
+	#input: two ideals in the same ring
+	#output: array with two entries: the first is the saturation of I with respect to J
+	#the second is an integer k for which I:J^k=I:J^(k+1)=I:J^\infty
+
 	flag=true
-	if I.base_ring!=J.base_ring
-		return("Error: I and J not defined over the same ring")
-	end
+	
+	check_parent(I,J)
+
  	If=I
 	k=0
 	Iff=I
@@ -71,6 +76,28 @@ function isBinomialIdeal(I::Singular.sideal)
 	end
 	return(true)
 end 
+
+function isUnital(I::Singular.sideal)
+	#check if I is a pure difference binomial ideal 
+	#for this look at all elements in a reduced gb and chgeck if they are pure difference
+	#binomials
+	I=std(I,complete_reduction=true)
+
+	for i=1:Singular.ngens(I)
+		if isBinomial(I[i])==false
+			return false
+		end
+		if length(I[i])==2 && coeff(I[i],0)==1 && coeff(I[i],1)==1
+			return false
+		end
+		if length(I[i])==2 && coeff(I[i],0)==-1 && coeff(I[i],1)==-1
+			return false
+		end
+	end
+
+		
+	return true
+end
 
 
 function markov4ti2(L::fmpz_mat)
@@ -276,7 +303,6 @@ function isCellular(I::Singular.sideal)
 	DeltaC=Int64[]
 	Delta=Int64[]
 	Variables=Singular.gens(I.base_ring)
-	#satu=Ideal(I.base_ring)
 	helpideal=Ideal(I.base_ring)
 	
 	for i=1:Singular.ngens(I.base_ring)
@@ -295,8 +321,7 @@ function isCellular(I::Singular.sideal)
 	
 	prodRingVarIdeal=Ideal(I.base_ring,prodRingVar)
 	J=saturate(I,prodRingVarIdeal)
-	#println(J)
-	#println(Singular.ngens(std(reduce(J[1],I))))
+
 	if Singular.ngens(std(reduce(J[1],I)))==0
 		#then I==J[1]
 		#in this case I is cellular with respect to Delta
@@ -308,8 +333,6 @@ function isCellular(I::Singular.sideal)
 	else
 		for i in Delta
 		J=quotient(I,Ideal(I.base_ring,Variables[i]))
-		#J=saturate(I,Ideal(R,Variables[i]))
-		#if Singular.ngens(std(reduce(J[1],I)))!=0
 		if Singular.ngens(std(reduce(J,I)))!=0
 			return (false,i)
 		end
@@ -341,22 +364,23 @@ function cellularDecomp(I::Singular.sideal) #with less redundancies
 	Decomp=Singular.sideal[]
 	I1=satu[1]
 	I2=I+Ideal(I.base_ring,(Singular.gens(I.base_ring)[A[2]])^s)
-	if I==I1
-		error("I1 is equal I")
-	end
-	if I==I2
-		error("I2 is equal I")
-	end
-	if I1==Ideal(I.base_ring,I.base_ring(1))
-		println(I)
-		println((Singular.gens(I.base_ring)[A[2]])^s)
-		error("unit ideal appears for I1")
-	end
-	if I2==Ideal(I.base_ring,I.base_ring(1))
-		println(I)
-		println((Singular.gens(I.base_ring)[A[2]])^s)
-		error("unit ideal appears for I2")
-	end
+
+	#if I==I1
+	#	error("I1 is equal I")
+	#end
+	#if I==I2
+	#	error("I2 is equal I")
+	#end
+	#if I1==Ideal(I.base_ring,I.base_ring(1))
+	#	println(I)
+	#	println((Singular.gens(I.base_ring)[A[2]])^s)
+	#	error("unit ideal appears for I1")
+	#end
+	#if I2==Ideal(I.base_ring,I.base_ring(1))
+	#	println(I)
+	#	println((Singular.gens(I.base_ring)[A[2]])^s)
+	#	error("unit ideal appears for I2")
+	#end
 	
 	DecompI1=cellularDecomp(I1)
 	DecompI2=cellularDecomp(I2)
@@ -408,8 +432,6 @@ function cellularDecomp2(I::Singular.sideal) #with redundancies
 	#by recursively calling the algorithm
 	Decomp=Singular.sideal[]
 	I1=satu[1]
-	println(satu)
-	println(A[2])
 	I2=I+Ideal(I.base_ring,(Singular.gens(I.base_ring)[A[2]])^s)
 	
 	Decomp=[Decomp; cellularDecomp(I1)]
@@ -606,9 +628,6 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 	#now convert to matrix
 	
 	vsMat=matrix(FlintZZ,size(vs,1), size(vs,2),vs)
-	#hier noch das ganze mit den erzeugern richtig machen
-	#um zu testen ob ein vektor in einem gitter enthalten ist verwende
-	#cansolve(B,testVector)[1]==false
 
 	P=PChar(vsMat, images , Set{Int64}(Delta))
 	return P
@@ -667,7 +686,6 @@ function partialCharacterFromIdeal2(I::Singular.sideal, R::Singular.PolyRing)
 		ts=[ts; J[i]]
 	end	
 	
-	#vs=matrix(FlintZZ,1,Singular.ngens(R),zeros(Int64,1,Singular.ngens(R)))
 	vs=zeros(Int64,Singular.ngens(R),1)
 	images=QabElem[]
 	for t in ts
@@ -698,9 +716,6 @@ function partialCharacterFromIdeal2(I::Singular.sideal, R::Singular.PolyRing)
 	#now convert to matrix
 	
 	vsMat=matrix(FlintZZ,size(vs,1), size(vs,2),vs)
-	#hier noch das ganze mit den erzeugern richtig machen
-	#um zu testen ob ein vektor in einem gitter enthalten ist verwende
-	#cansolve(B,testVector)[1]==false
 
 	P=PChar(vsMat, images , Set{Int64}(Delta))
 	return P
@@ -850,6 +865,10 @@ function cellularAssociatedPrimes(I::Singular.sideal)
 	#input: cellular binomial ideal
 	#output: the set of associated primes of I
 	
+	if isUnital(I)==false
+		error("input ideal has to be a pure difference binomial ideal")
+	end
+
 	cell=isCellular(I)
 	if cell[1]==false
 		error("input ideal is not cellular")
@@ -888,6 +907,7 @@ function cellularAssociatedPrimes(I::Singular.sideal)
 		while (j>0 && flag==false)
 			if Ass[j]==Ass[i]
 			 	deleteat!(Ass,i)
+				flag =true
 			end
 			j=j-1
 		end
@@ -899,9 +919,13 @@ end
 
 function cellularAssociatedPrimesSet(I::Singular.sideal)
 	#verwendet set of ideals aber klappt im moment leider noch nicht 
-	#input: cellular binomial ideal
+	#input: cellular binomial ideal (pure difference)
 	#output: the set of associated primes of I
 	
+	if isUnital(I)==false
+		error("input ideal is not a pure difference binomial ideal")
+	end
+
 	cell=isCellular(I)
 	if cell[1]==false
 		error("input ideal is not cellular")
@@ -941,9 +965,13 @@ end
 
 
 function cellularMinimalAssociatedPrimes(I::Singular.sideal)
-	#input: cellular binomial ideal
+	#input: cellular binomial ideal (pure difference)
 	#output: the set of minimal associated primes of I
-	
+		
+	if isUnital(I)==false
+		error("input ideal is not a pure difference binomial ideal")
+	end
+
 	cell=isCellular(I)
 	if cell[1]==false
 		error("input ideal is not cellular")
@@ -971,10 +999,14 @@ function cellularMinimalAssociatedPrimes(I::Singular.sideal)
 end
 
 function binomialAssociatedPrimes(I::Singular.sideal)
-	#input: binomial ideal
+	#input: binomial ideal (pure difference)
 	#output: the associated primes, but only implemented effectively in the cellular case	
 	#in the noncellular case compute a primary decomp and take radicals
 	
+	if isUnital(I)==false
+		error("input ideal is not a pure difference binomial ideal")
+	end
+
 	cell=isCellular(I)
 	if cell[1]==true
 		return cellularAssociatedPrimes(I)
@@ -1001,6 +1033,10 @@ function cellularPrimaryDecomposition(I::Singular.sideal)    #algorithm from mac
 	#input: cellular binomial ideal in k[x] where k algebraically closed of characterstic 0
 	#output: binomial primary ideals which form a minimal primary decomposition of I
 
+	if isUnital(I)==false
+		error("input ideal is not a pure difference binomial ideal")
+	end	
+	
 	cell=isCellular(I)
 	if cell[1]==false
 		error("input ideal is not cellular")
@@ -1032,7 +1068,7 @@ function cellularPrimaryDecomposition(I::Singular.sideal)    #algorithm from mac
 end
 
 function binomialPrimaryDecomposition(I::Singular.sideal)
-	#input: binomial ideal 
+	#input: binomial ideal (pure difference)
 	#output: binomial primary ideals which form a not necessarily 
 	#minimal primary decomposition of I
 
