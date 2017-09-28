@@ -237,10 +237,7 @@ function Hecke.isone(a::QabElem)
 end
 
 function LatticeEqual(A::fmpz_mat,B::fmpz_mat)
-  #lattices are always given as basis vectors, so if they are equal they must have the same 
-  #number of generators
-  #eher doch nicht als basis vectors gegeben (since partialCharacterFromIdeal does not return a basis)
-  #@assert rows(A)==rows(B)  
+  #eher doch nicht als basis vectors gegeben (since partialCharacterFromIdeal does not return a basis
   @assert cols(A)==cols(B)
   A=A'
   B=B'
