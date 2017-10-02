@@ -6,6 +6,7 @@
 #isBinomialIdeal(I::Singular.sideal)
 #isUnital(I::Singular.sideal)
 #lead_coeff(f::Singular.spoly)
+#intersectionArray(A::Array{Singular.sideal,1})
 #monomialFromVector(a::Array{Int64,1}, R::Singular.PolyRing)
 #markov4ti2(L::fmpz_mat)
 #"=="(I::Singular.sideal,J::Singular.sideal)
@@ -272,6 +273,20 @@ function extractInclusionMinimalIdeals(A::Array{Any,1})
 	end		
 	return Result
 end 
+
+function intersectionArray(A::Array{Singular.sideal,1})
+	if size(A,1)==0
+		error("array is empty")
+	end
+
+	result=Ideal(base_ring(A[1]),base_ring(A[1])(1))
+
+	for i=1:size(A,1)
+		result=Singular.intersection(result,A[i])
+	end
+	
+	return result
+end
 
 ###################################################################################
 #
@@ -1016,7 +1031,7 @@ function binomialAssociatedPrimes(I::Singular.sideal)
 	PD=binomialPrimaryDecomposition(I)
 	
 	#todo: take radicals and delete the superfluous elements from the array
-		
+	error("not yet implemented")	
 	return 1
 	
 end
