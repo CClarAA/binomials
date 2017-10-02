@@ -29,7 +29,32 @@
 #
 ###################################################################################
 
-function saturate(I::Singular.sideal, J::Singular.sideal)
+function saturate(I::Singular.sideal,J::Singular.sideal)
+	#input: two ideals in the same ring
+	#output: array with two entries: the first is the saturation of I with respect to J
+	#the second is an integer k for which I:J^k=I:J^(k+1)=I:J^\infty
+
+	check_parent(I,J)
+	
+	flag=true
+
+	k=0
+	If=I
+	Iff=I	
+	while flag
+		Iff=quotient(If,J)
+		if Iff==If
+			flag = false
+			return [If,k]
+		else
+			k=k+1
+		end
+		If=Iff
+	end
+
+end
+
+function saturate2(I::Singular.sideal, J::Singular.sideal)
 	#input: two ideals in the same ring
 	#output: array with two entries: the first is the saturation of I with respect to J
 	#the second is an integer k for which I:J^k=I:J^(k+1)=I:J^\infty
@@ -37,13 +62,17 @@ function saturate(I::Singular.sideal, J::Singular.sideal)
 	flag=true
 	
 	check_parent(I,J)
-
+	
+	if I==Ideal(I.base_ring,I.base_ring(1))
+		return[I,0]
+	end	
+	
  	If=I
 	k=0
 	Iff=I
 	while flag
 		Iff=quotient(If,J)
-		if Iff[1]==1 
+		if Iff[1]==I.base_ring(1) 
 			return([Iff,k+1])
 		end
 		if Singular.ngens(std(reduce(Iff,std(If))))==0
@@ -454,6 +483,88 @@ function cellularDecomp2(I::Singular.sideal) #with redundancies
 
 	return Decomp
 end 
+
+
+function cellularDecompMacaulay(I::Singular.sideal) #algorithm after Macaulay2 implementation
+	R=base_ring(I)
+	n=Singular.ngens(R)	
+	intersectAnswer=Ideal(R,R(1))
+	Answer=Singular.sideal[]
+	ToDo=[([R(1)],Singular.gens(R),I)]
+	#every element in the todo list has to data:
+	#1: contains a list of variables w.r.t. which it is already saturated 
+	#2: conatins variables to be considered for cell variables
+	#3: is the ideal to decompose
+
+	compo=0
+	while size(ToDo,1)>0
+		L=ToDo[1]
+		#println(size(L[2],1))
+		#println(L[1])
+		println("neue runde")
+		println(L[2])
+		println(L[3])
+		if size(ToDo,1)>1
+			#println(ToDo[2][2])
+			println(ToDo[2][3])
+		end
+		deleteat!(ToDo,1)
+
+		if Singular.ngens(std(reduce(intersectAnswer,std(L[3]))))==0
+			#found redundant component
+		elseif size(L[2],1)==0 
+			#no variables remain to check -> we have an answer
+			compo=compo+1
+			newone=L[3] #ideal 
+			Answer=[Answer;newone]
+			intersectAnswer=Singular.intersection(intersectAnswer,newone)
+			if intersectAnswer==I
+				println("komisch")
+				println(size(ToDo,1))
+				ToDo=[]
+			end
+		else
+			#there are remaining variables 
+			i=L[2][1] 	#variable under consideration
+			newL1=deleteat!(L[2],1)
+			result=saturate(L[3],Ideal(R,i))
+			J=result[1]  	#ideal
+			k=result[2]	#saturation exponent
+			if k>0
+				#if a division was needed we add the monomial i^k to the ideal
+				#under consideration
+				J2=L[3]+ Ideal(R,i^k)
+				
+				#compute product of all variables in L[1]
+				prod=R(1)
+				for m=1:size(L[1],1)
+					prod=prod*L[1][m]
+				end
+				J2=saturate(J2,Ideal(R,prod))[1]
+				if (J2==Ideal(R,R(1)))==false
+					#we have to decompose J2 further
+					#println("newL1")
+					#println(size(newL1,1))
+					ToDo=[ToDo; (L[1],newL1,J2)]
+					#println(size(ToDo,1))
+				end
+			end
+			#println(k>0)
+			#println(J2==Ideal(R,R(1)))
+			#println(J==Ideal(R,R(1)))
+				#continue with the next variable and add i to L[1]
+			if (J==Ideal(R,R(1)))==false
+				#println("newL1zumZweiten")
+				#println(size(newL1,1))
+				ToDo=[ToDo;([L[1];i], newL1, J)]
+				#println(size(ToDo,1))	
+			end
+			
+		end
+		println(size(ToDo,1))
+	end 
+	return Answer
+end
 
 
 ###################################################################################
