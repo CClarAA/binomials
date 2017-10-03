@@ -303,6 +303,32 @@ function extractInclusionMinimalIdeals(A::Array{Any,1})
 	return Result
 end 
 
+function extractInclusionMinimalIdeals(A::Array{Singular.sideal,1})
+	#returns all ideals of A which are minimal with respect to inclusion
+	#todo: sanity check -> check if all elements in A are ideals!	
+	
+	n=size(A,1)
+	#work with a copy of A
+	Result=A
+	
+	while n>0
+		helpIdeal=Result[1]
+		#now delete ideal from Array
+		deleteat!(Result,1)
+		flag=true 	#if ideal helpIdeal is redundant the flag is false
+		for k=1:size(Result,1)
+			if isSubset(Result[k],helpIdeal)==true
+				flag=false
+			end
+		end
+		if flag==true
+			Result=[Result;helpIdeal]
+		end
+		n=n-1			
+	end		
+	return Result
+end 
+
 function intersectionArray(A::Array{Singular.sideal,1})
 	if size(A,1)==0
 		error("array is empty")
@@ -499,16 +525,13 @@ function cellularDecompMacaulay(I::Singular.sideal) #algorithm after Macaulay2 i
 	compo=0
 	while size(ToDo,1)>0
 		L=ToDo[1]
-		#println(size(L[2],1))
-		#println(L[1])
-		println("neue runde")
-		println(L[2])
-		println(L[3])
+
 		if size(ToDo,1)>1
-			#println(ToDo[2][2])
-			println(ToDo[2][3])
-		end
-		deleteat!(ToDo,1)
+			ToDo=ToDo[2:size(ToDo,1)]
+		else 
+			ToDo=[]
+		end		
+		#deleteat!(ToDo,1)
 
 		if Singular.ngens(std(reduce(intersectAnswer,std(L[3]))))==0
 			#found redundant component
@@ -519,14 +542,18 @@ function cellularDecompMacaulay(I::Singular.sideal) #algorithm after Macaulay2 i
 			Answer=[Answer;newone]
 			intersectAnswer=Singular.intersection(intersectAnswer,newone)
 			if intersectAnswer==I
-				println("komisch")
-				println(size(ToDo,1))
 				ToDo=[]
 			end
 		else
 			#there are remaining variables 
 			i=L[2][1] 	#variable under consideration
-			newL1=deleteat!(L[2],1)
+			if size(L[2],1)>1
+				newL2=L[2][2:size(L[2],1)]	
+			else
+				newL2=[]			
+			end
+		
+			#newL2=deleteat!(L[2],1)
 			result=saturate(L[3],Ideal(R,i))
 			J=result[1]  	#ideal
 			k=result[2]	#saturation exponent
@@ -543,27 +570,17 @@ function cellularDecompMacaulay(I::Singular.sideal) #algorithm after Macaulay2 i
 				J2=saturate(J2,Ideal(R,prod))[1]
 				if (J2==Ideal(R,R(1)))==false
 					#we have to decompose J2 further
-					#println("newL1")
-					#println(size(newL1,1))
-					ToDo=[ToDo; (L[1],newL1,J2)]
-					#println(size(ToDo,1))
+					ToDo=[ToDo; (L[1],newL2,J2)]
 				end
 			end
-			#println(k>0)
-			#println(J2==Ideal(R,R(1)))
-			#println(J==Ideal(R,R(1)))
 				#continue with the next variable and add i to L[1]
 			if (J==Ideal(R,R(1)))==false
-				#println("newL1zumZweiten")
-				#println(size(newL1,1))
-				ToDo=[ToDo;([L[1];i], newL1, J)]
-				#println(size(ToDo,1))	
+				ToDo=[ToDo;([L[1];i], newL2, J)]
 			end
 			
 		end
-		println(size(ToDo,1))
 	end 
-	return Answer
+	return extractInclusionMinimalIdeals(Answer)
 end
 
 
