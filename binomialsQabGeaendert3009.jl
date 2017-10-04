@@ -343,6 +343,21 @@ function intersectionArray(A::Array{Singular.sideal,1})
 	return result
 end
 
+function intersectionArray(A::Array{Any,1})
+	#noch test einbauen ob auch wirklich nur ideale im array
+	if size(A,1)==0
+		error("array is empty")
+	end
+	
+	result=Ideal(base_ring(A[1]),base_ring(A[1])(1))
+
+	for i=1:size(A,1)
+		result=Singular.intersection(result,A[i])
+	end
+	
+	return result
+end
+
 ###################################################################################
 #
 #	Cellular-zeug
@@ -871,6 +886,91 @@ end
 ###################################################################################
 
 
+function cellularStandardMonomials2(I::Singular.sideal)
+	#assume I is cellular
+	#return the Standardmonomials of the ideal I \cap k[\mathbb{N}^\Delta], 
+	#this are only finitely many!
+
+	if I.isGB==false
+		I=std(I)
+	end
+	
+	cell=isCellular(I)
+	if cell[1]==false
+		error("input ideal is not cellular")
+	end
+
+	R=Singular.base_ring(I)
+
+	#now we start computing the standardmonomials
+	#first determine the set Delta^c of noncellular variables
+	DeltaC=Array{Int64}[]
+	for i=1: Singular.ngens(R)
+		if (i in cell[2])==false
+			DeltaC=[DeltaC;i]
+		end
+	end
+	
+	println(DeltaC)
+
+	#eliminate the variables in Delta
+	prodDelta=R(1)
+	Variables=Singular.gens(R)
+	for i in cell[2]
+		prodDelta=prodDelta*Variables[i]
+	end
+	
+	J=Singular.eliminate(I, prodDelta)
+	
+	println(J)
+	
+	leadIdeal=lead(J)
+	leadIdeal=std(leadIdeal)
+
+	println(leadIdeal)
+
+	mon=Array{Singular.spoly}[]	#this will hold set of standard monomials	
+	
+	for i in DeltaC
+		flag=true
+		d=1
+		while flag ==true
+			if reduce(Variables[i]^d,I) == 0
+				flag=false
+			else
+				mon=[mon;Variables[i]^d]
+				d=d+1
+			end
+		end
+		println(mon)
+	end 
+
+	#next step is not implemented effectively but it works (Verbessern irgendwann)
+	moncopy=mon
+	
+	println("geschafft")	
+		
+	counter=0
+	for i in subsets(mon)
+		testmon=R(1)
+		for l in i 
+			testmon=testmon*l
+		end
+		
+		if reduce(testmon,I) != 0 && (testmon in moncopy)==false && testmon != R(1)
+			moncopy=[moncopy;testmon]
+		end
+		counter=counter+1
+		println(counter)
+	end
+
+	#noch das monom 1 hinzufügen... evtl gibt das aber auch probleme?!?
+	moncopy=[moncopy; R(1)]
+					
+	return moncopy
+end
+
+
 function cellularStandardMonomials(I::Singular.sideal)
 	#assume I is cellular
 	#return the Standardmonomials of the ideal I \cap k[\mathbb{N}^\Delta], 
@@ -904,13 +1004,17 @@ function cellularStandardMonomials(I::Singular.sideal)
 	end
 	
 	J=Singular.eliminate(I, prodDelta)
-
+	
 	leadIdeal=lead(J)
 	leadIdeal=std(leadIdeal)
+
 	mon=Array{Singular.spoly}[]	#this will hold set of standard monomials	
-	
+	Answer=Array[]	
+	Result=Array{Singular.spoly}[]
+
 	for i in DeltaC
 		flag=true
+		mon=[mon;Variables[i]^0]
 		d=1
 		while flag ==true
 			if reduce(Variables[i]^d,I) == 0
@@ -919,27 +1023,30 @@ function cellularStandardMonomials(I::Singular.sideal)
 				mon=[mon;Variables[i]^d]
 				d=d+1
 			end
+			
 		end
+		push!(Answer,mon)
+		mon=Array{Singular.spoly}[]
 	end 
-
-	#next step is not implemented effectively but it works (Verbessern irgendwann)
-	moncopy=mon
 	
-	for i in subsets(mon)
+	#counter =0
+
+	for a in product(Answer)
 		testmon=R(1)
-		for l in i 
+		for l in a 
 			testmon=testmon*l
 		end
 		
-		if reduce(testmon,I) != 0 && (testmon in moncopy)==false && testmon != R(1)
-			moncopy=[moncopy;testmon]
+		if reduce(testmon,I) != 0 
+			Result=[Result;testmon]
 		end
+		#counter=counter+1
+		#println(counter)
 	end
+	
+	
+	return Result
 
-	#noch das monom 1 hinzufügen... evtl gibt das aber auch probleme?!?
-	moncopy=[moncopy; R(1)]
-					
-	return moncopy
 end
 
 
@@ -1216,7 +1323,8 @@ function binomialPrimaryDecomposition(I::Singular.sideal)
 	#minimal primary decomposition of I
 
 	#first compute a cellular decomposition of I
-	cellComps=cellularDecomp(I)
+	#cellComps=cellularDecomp(I)
+	cellComps=cellularDecompMacaulay(I)
 	
 	C=Array{Singular.sideal}[]	#this will hold the set of primary components
 	
