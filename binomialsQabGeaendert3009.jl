@@ -20,12 +20,11 @@
 #cellularAssociatedPrimes(I::Singular.sideal)
 #cellularHull(I::Singular.sideal)
 
-
 #neue Notationan eingearbeitet
 
 ###################################################################################
 #
-#	Hilfsfunktionen
+#	helper functions
 #
 ###################################################################################
 
@@ -352,10 +351,26 @@ function intersectionArray(A::Array{Any,1})
 	result=Ideal(base_ring(A[1]),base_ring(A[1])(1))
 
 	for i=1:size(A,1)
+		#vllt später mal intersection wieder ohne std möglich
 		result=Singular.intersection(result,A[i])
 	end
 	
 	return result
+end
+
+function deleteZerosInHNF(m::fmpz_mat)
+	#deletes zero rows in the hnf of m
+	m=hnf(m)
+	i=rows(m)
+	cm=cols(m)
+	s=sub(m,i:i,1:cm)
+	ZeroTest=matrix(FlintZZ,1,cm,zeros(Int64,1,cm))
+	while s==ZeroTest
+		m=sub(m,1:(rows(m)-1),1:cm)
+		i=rows(m)
+		s=sub(m,i:i,1:cm)
+	end
+	return m
 end
 
 ###################################################################################
@@ -449,23 +464,6 @@ function cellularDecomp(I::Singular.sideal) #with less redundancies
 	Decomp=Singular.sideal[]
 	I1=satu[1]
 	I2=I+Ideal(I.base_ring,(Singular.gens(I.base_ring)[A[2]])^s)
-
-	#if I==I1
-	#	error("I1 is equal I")
-	#end
-	#if I==I2
-	#	error("I2 is equal I")
-	#end
-	#if I1==Ideal(I.base_ring,I.base_ring(1))
-	#	println(I)
-	#	println((Singular.gens(I.base_ring)[A[2]])^s)
-	#	error("unit ideal appears for I1")
-	#end
-	#if I2==Ideal(I.base_ring,I.base_ring(1))
-	#	println(I)
-	#	println((Singular.gens(I.base_ring)[A[2]])^s)
-	#	error("unit ideal appears for I2")
-	#end
 	
 	DecompI1=cellularDecomp(I1)
 	DecompI2=cellularDecomp(I2)
@@ -786,7 +784,9 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 	#now convert to matrix
 	
 	vsMat=matrix(FlintZZ,size(vs,1), size(vs,2),vs)
-
+	#delete zero rows in the hnf of vsMat so that we do not get problems when considering a 
+	#saturation
+	vsMat=deleteZerosInHNF(vsMat)
 	P=PChar(vsMat, images , Set{Int64}(Delta))
 	return P
 end 
