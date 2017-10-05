@@ -5,6 +5,13 @@
 #
 ###############################################################################
 
+#
+# Note that there are two possibilities construct a nth root of unity when n is even and n%4!=0
+# either we can construct the field Q(z_n) or we take -z_(n/2) as a primitive n-th root
+# to change between these two options, use PCharSaturateAll with allroots of allrootsNew (change this in 
+# the code)
+#
+
 type QabField <: Nemo.Field # union of cyclotomic fields
 end
 
@@ -28,11 +35,6 @@ function is_conductor(n::Int)
   return n % 4 == 0
 end
 
-#function cyclotomic_field(n::Int)
-#  Zx, x = FlintZZ["x"]
-#  return number_field(cyclotomic(n, x), "z_$n")
-#end
-
 function coerce_up(K::AnticNumberField, n::Int, a::QabElem)
   d = div(n, a.c)
   @assert n % a.c == 0
@@ -54,19 +56,7 @@ function make_compatible(a::QabElem, b::QabElem)
   return coerce_up(K, d, a), coerce_up(K, d, b)
 end
 
-function root_of_unity(K::QabField, n::Int)
-  if n % 2 == 0 && n % 4 != 0
-    c = div(n, 2)
-  else
-    c = n
-  end
-  K, z = cyclotomic_field(c)
-  if c == n
-    return QabElem(z, c)
-  else
-    return QabElem(-z, c)
-  end
-end
+
 
 import Base.+, Base.*, Base.-, Base.//, Base.==, Base.zero, Base.one, Base.^
 import Nemo.mul!, Nemo.addeq!, Nemo.divexact, Nemo.iszero
@@ -185,7 +175,7 @@ Hecke.isnegative(::QabElem) = false
 #evtl später noch einfügen promote_rule aber bisher noch nicht notwendig
 #Hecke.promote_rule(::Type{QabElem}, ::Type{T}) where {T <: Integer} = QabElem
 
-#folgende sachen eigentlich besser wieder rausnehmen
+#perhaps the following is not necessary
 Hecke.promote_rule(::Type{QabElem}, ::Type{T}) where {T <: Integer} = QabElem
 
 Hecke.promote_rule(::Type{QabElem}, ::Type{fmpz}) = QabElem
@@ -195,6 +185,84 @@ Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq}) = QabElem
 Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq_poly}) = QabElem
 
 
+###############################################################################
+#
+#   functions for computing roots
+#
+###############################################################################
+
+function root_of_unity(K::QabField, n::Int)
+	#this function finds a primitive root of unity in our field, note this is not always e^(2*pi*i)/n
+  if n % 2 == 0 && n % 4 != 0
+    c = div(n, 2)
+  else
+    c = n
+  end
+  K, z = cyclotomic_field(c)
+  if c == n
+    return QabElem(z, c)
+  else
+    return QabElem(-z, c)
+  end
+end
+
+function root_of_unity2(K::QabField, n::Int)
+	#this function returns the primitive root of unity e^(2*pi*i/n)
+	c=n
+  K, z = cyclotomic_field(c)
+  if c == n
+    return QabElem(z, c)
+  else
+    return QabElem(-z, c)
+  end
+end
+
+function Hecke.root(a::QabElem, n::Int)
+ o = order(a)
+ l = o*n
+ #mu = root_of_unity(QabField(), Int(l))
+  mu = root_of_unity2(QabField(), Int(l))
+ return mu
+end
+
+function allroot(a::QabElem, n::Int)
+	#all roots in a probably smaller field than with the function allrootNew
+	#(using root_of_unity -> construct field Q(z_5) when needing a 10th root of unity, root_of_unity 
+	#constructs the field Q(z_10))
+	o = order(a)
+  l = o*n
+  mu = root_of_unity(QabField(), Int(l))
+	A=QabElem[]
+	if l==1 && mu^1==a
+		A=[A;mu]
+	end
+  for k=1:(l-1)
+		if (mu^k)^n==a
+    	A=[A; mu^(k)]
+		end
+  end
+  return A
+end
+
+function allrootNew(a::QabElem, n::Int)
+	#compute all nth roots of a, where a has to be a root_of_unity
+	o=order(a)
+	l=o*n
+	A=QabElem[]
+	mu=root_of_unity2(QabField(),Int(l))
+	if l==1 && mu^1==a
+		A=[A;mu]
+	end
+	for k=1:(l-1)
+		if (mu^k)^n==a
+			A=[A;mu^k]
+		end
+	end
+	if size(A,1)==0
+		error("no root found")
+	end
+	return A
+end
 
 
 ###############################################################################
@@ -304,39 +372,10 @@ function PCharEqual(P::PChar,Q::PChar)
   return true 
 end
 
-function Hecke.root(a::QabElem, n::Int)
- o = order(a)
- l = o*n
- mu = root_of_unity(QabField(), Int(l))
- return mu
-end
 
-function allroot(a::QabElem, n::Int)
-  o = order(a)
-  l = o*n
-  mu = root_of_unity(QabField(), Int(l))
-  A=[mu]
-  for k=1:(l-1)
-    A=[A mu^(k+1)]
-  end
-  return A
-end
-
-function allroot2(a::QabElem, n::Int)
-	#versuch dass die funktion jetzt das richtigere tut aber etwas arg schlecht implementiert
-	o = order(a)
-  l = o*n
-  mu = root_of_unity(QabField(), Int(l))
-  A=[mu]
-  for k=1:(l-1)
-		if (mu^(k+1))^n==a
-    	A=[A mu^(k+1)]
-		end
-  end
-  return A
-end
 
 function Hecke.saturate(L::PChar)
+	#this function doesn't work, we have to change root_of_unity to root_of_unity2 in the funtion root
   H = hnf(L.A')
   s = sub(H, 1:cols(H), 1:cols(H))
   i, d = pseudo_inv(s)  #is = d I_n
@@ -389,7 +428,6 @@ function minimise!(a::QabElem)
         L += t^j*c*coeff(x, j)*z_n1^i
       end
     end
-#    println("$p: $(a.data) -> $L")
     #if the index of all non-zero coefficients is divisible by p^?, then we can
     #move down some levels
     g = gcd([i for i=0:degree(L) if coeff(L, i) != 0])
@@ -440,11 +478,10 @@ function PCharSaturateAll(L::PChar)
       end
     end
     mu = evaluate(FacElem(Dict([(L.b[j], div(i[j, k], c)) for j=1:cols(s)])))
-    #mu = allroot(mu, Int(div(d, c)))
-		mu=allroot2(mu, Int(div(d,c)))
+		#mu=allrootNew(mu, Int(div(d,c)))
+		mu=allroot(mu, Int(div(d,c)))
     push!(B,  mu) 
   end
-  
   C=IterTools.product(B)
   T=Array[]
   for a in C
@@ -459,6 +496,66 @@ function PCharSaturateAll(L::PChar)
 	for i=1:rows(L.A)
 		if Pnew(sub(L.A,i:i,1:cols(L.A)))!=L.b[i]
 			flag=false
+			println("found wrong saturation (for information), we delete it")
+		end
+	end
+	
+	if flag==true
+		push!(Result,PChar(S, T[k],L.D))
+	end
+  end
+  return Result
+end
+
+function PCharSaturateAllNew(L::PChar)
+	#therewith the function works, the lattice L.A must not have zero rows in the hnf
+  Result=PChar[]
+
+  #first handle case wher the domain of the partial character is the zero lattice
+  #in this case return L
+  ZeroTest=matrix(FlintZZ,1,cols(L.A),zeros(Int64,1,cols(L.A)))
+  if LatticeEqual(L.A,ZeroTest)==true
+		push!(Result,L)
+		return Result
+  end	
+	
+  #now not trivial case
+  H = hnf(L.A')
+  s = sub(H, 1:cols(H), 1:cols(H))
+  i, d = pseudo_inv(s)  #is = d I_n
+  #so, saturation is i' * H // d
+  S = divexact(i'*L.A, d)
+  Re = QabElem[]
+ 
+	B = Array[]
+  for k=1:rows(s)
+    c = i[1,k]
+    for j=2:cols(s)
+      c = gcd(c, i[j,k])
+      if isone(c)
+        break
+      end
+    end
+    mu = evaluate(FacElem(Dict([(L.b[j], div(i[j, k], c)) for j=1:cols(s)])))
+		mu=allrootNew(mu, Int(div(d,c)))
+    push!(B,  mu) 
+  end
+  C=IterTools.product(B)
+  T=Array[]
+  for a in C
+		push!(T,collect(a))
+  end
+  
+  for k=1:size(T,1)
+	#check if PChar(S,T[k],L.D) puts on the right value on the lattice generators of L
+	Pnew=PChar(S,T[k],L.D)
+	flag=true	#flag if value on lattice generators is right
+	
+	#this check is probably not necessary any more but we don't want to change it...
+	for i=1:rows(L.A)
+		if Pnew(sub(L.A,i:i,1:cols(L.A)))!=L.b[i]
+			flag=false
+			println("Falsche Saturierung gefunden")
 		end
 	end
 	
