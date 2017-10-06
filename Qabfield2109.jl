@@ -192,7 +192,7 @@ Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq_poly}) = QabElem
 ###############################################################################
 
 function root_of_unity(K::QabField, n::Int)
-	#this function finds a primitive root of unity in our field, note this is not always e^(2*pi*i)/n
+  #this function finds a primitive root of unity in our field, note this is not always e^(2*pi*i)/n
   if n % 2 == 0 && n % 4 != 0
     c = div(n, 2)
   else
@@ -207,8 +207,8 @@ function root_of_unity(K::QabField, n::Int)
 end
 
 function root_of_unity2(K::QabField, n::Int)
-	#this function returns the primitive root of unity e^(2*pi*i/n)
-	c=n
+  #this function returns the primitive root of unity e^(2*pi*i/n)
+  c=n
   K, z = cyclotomic_field(c)
   if c == n
     return QabElem(z, c)
@@ -221,7 +221,7 @@ function Hecke.root(a::QabElem, n::Int)
  o = order(a)
  l = o*n
  #mu = root_of_unity(QabField(), Int(l))
-  mu = root_of_unity2(QabField(), Int(l))
+ mu = root_of_unity2(QabField(), Int(l))
  return mu
 end
 
@@ -375,7 +375,7 @@ end
 
 
 function Hecke.saturate(L::PChar)
-	#this function doesn't work, we have to change root_of_unity to root_of_unity2 in the funtion root
+  #this function doesn't work, we have to change root_of_unity to root_of_unity2 in the function root
   H = hnf(L.A')
   s = sub(H, 1:cols(H), 1:cols(H))
   i, d = pseudo_inv(s)  #is = d I_n
