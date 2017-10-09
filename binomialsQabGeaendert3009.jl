@@ -45,8 +45,8 @@ function saturate(I::Singular.sideal,J::Singular.sideal)
 	Iff=I	
 	while flag
 		Iff=quotient(If,J)
-		if Iff==If
-			flag = false
+		if isSubset(Iff,If)==true
+			flag =false
 			return [If,k]
 		else
 			k=k+1
@@ -54,38 +54,6 @@ function saturate(I::Singular.sideal,J::Singular.sideal)
 		If=Iff
 	end
 
-end
-
-function saturate2(I::Singular.sideal, J::Singular.sideal)
-	#input: two ideals in the same ring
-	#output: array with two entries: the first is the saturation of I with respect to J
-	#the second is an integer k for which I:J^k=I:J^(k+1)=I:J^\infty
-
-	flag=true
-	
-	check_parent(I,J)
-	
-	if I==Ideal(I.base_ring,I.base_ring(1))
-		return[I,0]
-	end	
-	
- 	If=I
-	k=0
-	Iff=I
-	while flag
-		Iff=quotient(If,J)
-		if Iff[1]==I.base_ring(1) 
-			return([Iff,k+1])
-		end
-		if Singular.ngens(std(reduce(Iff,std(If))))==0
-			return([Iff,k])
-		end
-		if std(reduce(Iff,std(If)))[1]==0
-			return([Iff,k])
-		end
-		If=Iff
-		k=k+1
-	end	
 end
 
 function isBinomial(f::Singular.spoly)
@@ -232,8 +200,8 @@ function isSubset(I::Singular.sideal,J::Singular.sideal)
 	if J.isGB==false
 		J=std(J)
 	end
-	testIdeal=std(reduce(I,J))
-	if Singular.ngens(testIdeal)==0 || testIdeal[1]==I.base_ring(0)
+	testIdeal=reduce(I,J)
+	if iszero(testIdeal)==true
 		return true
 	end
 	return false	
@@ -429,19 +397,24 @@ function isCellular(I::Singular.sideal)
 	
 	prodRingVarIdeal=Ideal(I.base_ring,prodRingVar)
 	J=saturate(I,prodRingVarIdeal)
-
-	if Singular.ngens(std(reduce(J[1],I)))==0
+	
+	if isSubset(J[1],I)==true
+		#then I==J
+		#in this case I is cellular with respect to Delta
+		return(true,Delta)
+	#if Singular.ngens(std(reduce(J[1],I)))==0
 		#then I==J[1]
 		#in this case I is cellular with respect to Delta
 		return(true,Delta)
-	elseif (std(reduce(J[1],I))[1])==0 
+	#elseif (std(reduce(J[1],I))[1])==0 
 		#then I==J[1]
 		#in this case I is cellular with respect to Delta
 		return(true,Delta)
 	else
 		for i in Delta
 		J=quotient(I,Ideal(I.base_ring,Variables[i]))
-		if Singular.ngens(std(reduce(J,I)))!=0
+		if iszero(reduce(J,I))==false
+		#if Singular.ngens(std(reduce(J,I)))!=0
 			return (false,i)
 		end
 		end		
@@ -489,7 +462,8 @@ function cellularDecomp(I::Singular.sideal) #with less redundancies
 	end
 	for i=1:size(DecompI2,1)
 		redTestIntersect=Singular.intersection(redTest,DecompI2[i])
-		if Singular.ngens(std(reduce(redTest,std(redTestIntersect))))!=0
+		if iszero(reduce(redTest,std(redTestIntersect)))==false
+		#if Singular.ngens(std(reduce(redTest,std(redTestIntersect))))!=0
 			#ideal not redundant
 			Decomp=[Decomp;DecompI2[i]]
 		end
@@ -556,15 +530,14 @@ function cellularDecompMacaulay(I::Singular.sideal)
 		end		
 		#deleteat!(ToDo,1)
 
-		if Singular.ngens(std(reduce(intersectAnswer,std(L[3]))))==0
+		if iszero(reduce(intersectAnswer,std(L[3])))==true
+		#if Singular.ngens(std(reduce(intersectAnswer,std(L[3]))))==0
 			#found redundant component
 		elseif size(L[2],1)==0 
 			#no variables remain to check -> we have an answer
 			compo=compo+1
 			newone=L[3] #ideal 
 			Answer=[Answer;newone]
-			println("answer:")
-			println("size(Answer,1)")
 			intersectAnswer=Singular.intersection(intersectAnswer,newone)
 			if intersectAnswer==I
 				ToDo=[]
