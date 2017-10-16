@@ -25,7 +25,7 @@ type QabElem <: Nemo.FieldElem
 end
 
 function Base.show(io::IO, a::QabElem)
-  println(io, a.data, " in Q(z_$(a.c))")
+  print(io, a.data, " in Q(z_$(a.c))")
 end
 
 function is_conductor(n::Int)
