@@ -157,7 +157,6 @@ function Base.copy(a::QabElem)
   return QabElem(a.data, a.c)
 end
 
-# deepcopy is the same as copy
 function Base.deepcopy(a::QabElem, b::QabElem)
   a, b = make_compatible(a, b)
   return QabElem(a.data//b.data, a.c)
