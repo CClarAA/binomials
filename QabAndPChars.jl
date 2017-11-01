@@ -181,7 +181,7 @@ Hecke.promote_rule(::Type{QabElem}, ::Type{fmpq_poly}) = QabElem
 
 ###############################################################################
 #
-#   functions for computing roots
+#   Functions for computing roots
 #
 ###############################################################################
 
