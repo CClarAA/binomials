@@ -683,7 +683,7 @@ end
 
 function cellularStandardMonomials(I::Singular.sideal)
 	#input: cellular ideal I
-	#output: the standardmonomials of the ideal I \cap k[\mathbb{N}^\Delta], 
+	#output: the standardmonomials of the ideal I \cap k[\mathbb{N}^{\Delta^c}], 
 	#this are only finitely many!
 
 	if I.isGB==false
@@ -744,7 +744,7 @@ function cellularStandardMonomials(I::Singular.sideal)
 		for l in a 
 			testmon=testmon*l
 		end		
-		if reduce(testmon,I) != 0 
+		if reduce(testmon,leadIdeal)!= 0 
 			Result=[Result;testmon]
 		end
 	end
