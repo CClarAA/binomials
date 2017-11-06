@@ -81,18 +81,26 @@ function isUnital(I::Singular.sideal)
 	#binomials
 
 	I=std(I,complete_reduction=true)
+	counter=0
 	for i=1:Singular.ngens(I)
 		if isBinomial(I[i])==false
 			return false
 		end
-		if length(I[i])==2 && coeff(I[i],0)==1 && coeff(I[i],1)==1
-			return false
+		if length(I[i])==2 && coeff(I[i],0)==1 && coeff(I[i],1)==-1
+			counter=counter+1
 		end
-		if length(I[i])==2 && coeff(I[i],0)==-1 && coeff(I[i],1)==-1
-			return false
+		if length(I[i])==2 && coeff(I[i],0)==-1 && coeff(I[i],1)==1
+			counter=counter+1
 		end
-	end		
-	return true
+		if length(I[i])==1 #case I[i] is monomial
+			counter=counter+1
+		end
+	end
+	if counter==Singular.ngens(I)	
+		return true
+	else 
+		return false
+	end
 end
 
 function markov4ti2(L::fmpz_mat)
@@ -249,10 +257,12 @@ function extractInclusionMinimalIdeals(A::Array{Any,1})
 		#now delete ideal from Array
 		deleteat!(Result,1)
 		flag=true 	#if ideal helpIdeal is redundant the flag is false
-		for k=1:size(Result,1)
+		k=1
+		while flag==true && k<=size(Result,1)
 			if isSubset(Result[k],helpIdeal)==true
 				flag=false
 			end
+			k=k+1
 		end
 		if flag==true
 			Result=[Result;helpIdeal]
@@ -274,10 +284,12 @@ function extractInclusionMinimalIdeals(A::Array{Singular.sideal,1})
 		#now delete ideal from Array
 		deleteat!(Result,1)
 		flag=true 	#if ideal helpIdeal is redundant the flag is false
-		for k=1:size(Result,1)
+		k=1
+		while flag==true && k<=size(Result,1)
 			if isSubset(Result[k],helpIdeal)==true
 				flag=false
 			end
+			k=k+1
 		end
 		if flag==true
 			Result=[Result;helpIdeal]
@@ -377,7 +389,7 @@ function cellularDecomp(I::Singular.sideal) #with less redundancies
 
 	A=isCellular(I)
 	if A[1]==true
-		return [std(I)]
+		return [I]
 	end
 	
 	#choose a variable which is a zero divisor but not nilptent modulo I -> A[2] (if not dummer fall)
@@ -636,7 +648,7 @@ function partialCharacterFromIdeal(I::Singular.sideal, R::Singular.PolyRing)
 	end
 	#now case if J \neq 0
 	#let ts be a list of minimal binomial generators for J
-	I=std(I)
+	J=std(J,complete_reduction=true)
 	ts=Array{Singular.spoly}[]
 	for i=1:Singular.ngens(J)
 		ts=[ts; J[i]]
@@ -777,6 +789,9 @@ function witnessMonomials(I::Singular.sideal)
 		if rank(Pquotm.A)>rank(P.A)
 			Memb=[Memb;M[1]]
 		end
+		#by checking for divisibility of the monomials in M by M[1] respectively of M[1]
+		#by monomials in M, some monomials in M necessarily belong to Memb, respectively can 			#be directly excluded from being elements of Memb
+		#todo: implement this for improvement
 		deleteat!(M,1)
 	end	
 	return(Memb)
