@@ -76,9 +76,9 @@ function isBinomialIdeal(I::Singular.sideal)
 end 
 
 function isUnital(I::Singular.sideal)
-	#check if I is a pure difference binomial ideal 
+	#check if I is a unital ideal 
 	#for this look at all elements in a reduced GB and check if they are pure difference
-	#binomials
+	#binomials or monomials
 
 	I=std(I,complete_reduction=true)
 	counter=0
@@ -830,7 +830,7 @@ function cellularAssociatedPrimes(I::Singular.sideal)
 	#output: the set of associated primes of I
 	
 	if isUnital(I)==false
-		error("input ideal has to be a pure difference binomial ideal")
+		error("input ideal has to be a unital ideal")
 	end
 
 	cell=isCellular(I)
@@ -881,11 +881,11 @@ function cellularAssociatedPrimes(I::Singular.sideal)
 end
 
 function cellularMinimalAssociatedPrimes(I::Singular.sideal)
-	#input: cellular pure difference binomial ideal
+	#input: cellular unital ideal
 	#output: the set of minimal associated primes of I
 		
 	if isUnital(I)==false
-		error("input ideal is not a pure difference binomial ideal")
+		error("input ideal is not a unital ideal")
 	end
 
 	cell=isCellular(I)
@@ -914,12 +914,12 @@ function cellularMinimalAssociatedPrimes(I::Singular.sideal)
 end
 
 function binomialAssociatedPrimes(I::Singular.sideal)
-	#input: pure difference binomial ideal 
+	#input: unital ideal 
 	#output: the associated primes, but only implemented effectively in the cellular case	
 	#in the noncellular case compute a primary decomp and take radicals
 	
 	if isUnital(I)==false
-		error("input ideal is not a pure difference binomial ideal")
+		error("input ideal is not a unital ideal")
 	end
 
 	cell=isCellular(I)
@@ -943,11 +943,11 @@ end
 ###################################################################################
 
 function cellularPrimaryDecomposition(I::Singular.sideal)    #algorithm from macaulay2
-	#input: pure difference cellular binomial ideal in k[x]
+	#input: unital cellular ideal in k[x]
 	#output: binomial primary ideals which form a minimal primary decomposition of I
 
 	if isUnital(I)==false
-		error("input ideal is not a pure difference binomial ideal")
+		error("input ideal is not a unital ideal")
 	end	
 	
 	cell=isCellular(I)
@@ -981,7 +981,7 @@ function cellularPrimaryDecomposition(I::Singular.sideal)    #algorithm from mac
 end
 
 function binomialPrimaryDecomposition(I::Singular.sideal)
-	#input: pure difference binomial ideal 
+	#input: unital ideal 
 	#output: binomial primary ideals which form a not necessarily 
 	#minimal primary decomposition of I
 
